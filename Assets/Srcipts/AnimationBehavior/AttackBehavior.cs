@@ -14,9 +14,8 @@ public class AttackBehavior : StateMachineBehaviour
             rb= animator.GetComponent<Rigidbody>();
         Vector3 dashDirection = animator.transform.forward;
         rb.linearVelocity = dashDirection * dashForce;
-        //rb.AddForce(dashDirection * dashForce, ForceMode.Impulse);
-        
-        player.IsAttack=true;
+
+        player.CanAttack=false;
         player.CanMove= false;
     }
 

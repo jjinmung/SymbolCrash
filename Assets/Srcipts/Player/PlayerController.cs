@@ -10,15 +10,18 @@ public class PlayerController : MonoBehaviour
     public float rotationSpeed = 15f;
     
     [Header("Dash Settings")]
-    public float dashForce = 40f;      // 대시 힘
+    public float dashForce = 20f;      // 대시 힘
     public float dashCooldown = 1.5f;  // 대시 쿨타임
     private float _lastDashTime = -999f; // 마지막 대시 시간 저장
 
-    public bool IsAttack = false;
+    public bool CanAttack = true;
     public bool CanMove = true;
     public int ComboIndex = 0;
     
+    [SerializeField] private ParticleSystem[] SwordTrails;
+    [SerializeField] private Transform[] AttackEffectPos;
     
+     private Transform SwordTrailTransform;
     private float bufferTimeout = 0.5f;
     private Queue<(InputType type,float time)> inputBuffer =new Queue<(InputType type,float time)>();
     private Rigidbody _rb;
@@ -31,8 +34,9 @@ public class PlayerController : MonoBehaviour
     private enum InputType{Attack,Dash}
     
     public PlayerState CurrentState = PlayerState.Idle;
+    public enum AttackType {Normal,Ice,Fire}
 
-    
+    public AttackType attackType = AttackType.Normal;
     
     private void Awake()
     {
@@ -50,14 +54,13 @@ public class PlayerController : MonoBehaviour
         if (_isAttackPressed)
         {
             // 공격 중이 아니고, 버퍼가 비어있다면 (다음 공격 가능 시점)
-            if (!IsAttack && inputBuffer.Count == 0)
+            if (CanAttack && inputBuffer.Count == 0)
             {
-                
                 AddToBuffer(InputType.Attack); // 버퍼에 공격 추가
             }
         }
         
-        if (!IsAttack && inputBuffer.Count > 0)
+        if (CanAttack && inputBuffer.Count > 0)
         {
             ProcessNextInput();
         }
@@ -69,14 +72,14 @@ public class PlayerController : MonoBehaviour
     {
         _inputVector = value.Get<Vector2>();
     }
-
+    
     public void OnAttack(InputValue value)
     {
         //AddToBuffer(InputType.Attack);
         // Digital 타입은 누를 때 true, 뗄 때 false를 반환합니다.
         _isAttackPressed = value.isPressed;
         // 누른 순간 즉시 첫 공격 실행
-        if (_isAttackPressed && !IsAttack)
+        if (_isAttackPressed && CanAttack)
         {
             AddToBuffer(InputType.Attack);
         }
@@ -84,11 +87,13 @@ public class PlayerController : MonoBehaviour
 
     public void OnDash()
     {
-        if (Time.time >= _lastDashTime + dashCooldown)
+        
+        if (Time.time >= _lastDashTime + dashCooldown&&CanMove)
         {
+
             inputBuffer.Clear();
             ComboIndex = 0;
-            AddToBuffer(InputType.Dash);
+            ExecuteDash();
         }
     }
 
@@ -96,7 +101,6 @@ public class PlayerController : MonoBehaviour
     
     private void MoveCharacter()
     {
-       
         Vector3 forward = Camera.main.transform.forward;
         Vector3 right = Camera.main.transform.right;
         forward.y = 0; right.y = 0;
@@ -161,7 +165,6 @@ public class PlayerController : MonoBehaviour
     {
         while (inputBuffer.Count > 0)
         {
-            // 큐에서 꺼내기 (Item1, Item2 대신 지정한 이름인 type, time으로 접근 가능)
             var input = inputBuffer.Dequeue();
 
             // 유효 시간 체크
@@ -176,7 +179,7 @@ public class PlayerController : MonoBehaviour
     
     void PerformInput(InputType type)
     {
-        _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0);
+        //_rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0);
         if (type == InputType.Attack)
         {
             LookAtMouse();
@@ -193,35 +196,66 @@ public class PlayerController : MonoBehaviour
                     _animator.SetTrigger("ATTACK3");
                     break;
             }
-            ComboIndex = (ComboIndex + 1) % 3;
-        }
-        else if (type == InputType.Dash)
-        {
-            ExecuteDash();
+
+            if (ComboIndex == 2)
+            {
+                ComboIndex--;
+            }
+            else
+            {
+                ComboIndex++;
+            }
+            
         }
         
     }
 
-    
-    //애니메이션 이벤트함수
+
+    #region 애니메이션 이벤트 함수
+
     public void CheckCombo()
     {
-        IsAttack = false;
+        CanAttack = true;
     }
     //애니메이션 이벤트함수
     public void stopDash()
     {
         _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0);
+        
     }
-        
-        
-    public void ClearBuffer()
+
+    public void Attack1Effect()
     {
-        inputBuffer.Clear(); 
+        SwordTrailTransform = AttackEffectPos[0];
+        
+        SwordTrails[(int)attackType].transform.position = SwordTrailTransform.position;
+        SwordTrails[(int)attackType].transform.rotation = SwordTrailTransform.rotation;
+        SwordTrails[(int)attackType].Play();
     }
+    public void Attack2Effect()
+    {
+        SwordTrailTransform = AttackEffectPos[1];
+        
+        SwordTrails[(int)attackType].transform.position = SwordTrailTransform.position;
+        SwordTrails[(int)attackType].transform.rotation = SwordTrailTransform.rotation;
+        SwordTrails[(int)attackType].Play();
+    }
+    public void Attack3Effect()
+    {
+        SwordTrailTransform = AttackEffectPos[2];
+        
+        SwordTrails[(int)attackType].transform.position = SwordTrailTransform.position;
+        SwordTrails[(int)attackType].transform.rotation = SwordTrailTransform.rotation;
+        SwordTrails[(int)attackType].Play();
+    }
+    #endregion
+    
     
     private void ExecuteDash()
     {
+        CanMove = false;
+        CanAttack = false;
+
         _lastDashTime = Time.time;
         _animator.SetTrigger("QUICK SHIFT F");
 
@@ -229,8 +263,7 @@ public class PlayerController : MonoBehaviour
         transform.forward = dashDir;
         _rb.linearVelocity = dashDir * dashForce;
         
-        CanMove = false;
-        IsAttack = true;
+       
         CurrentState =PlayerState.Dash;
     }
     
@@ -262,5 +295,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    
 
 }

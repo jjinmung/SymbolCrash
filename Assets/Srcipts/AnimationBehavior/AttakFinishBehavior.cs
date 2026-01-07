@@ -8,7 +8,7 @@ public class AttakFinishBehavior : StateMachineBehaviour
     {
         if(player==null)
             player = animator.GetComponent<PlayerController>();
-        player.IsAttack=true;
+        player.CanAttack=false;
     }
 
     // OnStateUpdate is called on each Update frame between OnStateEnter and OnStateExit callbacks
@@ -22,9 +22,10 @@ public class AttakFinishBehavior : StateMachineBehaviour
     {
         if(player==null)
             player = animator.GetComponent<PlayerController>();
-        player.IsAttack=false;
+        player.CanAttack=true;
         player.CanMove= true;
         player.ComboIndex = 0;
+        
     }
 
     // OnStateMove is called right after Animator.OnAnimatorMove()
